@@ -1,0 +1,23 @@
+    <extension name="test_rxfax_stream">
+        <condition field="destination_number" expression="^99999$">
+            <action application="answer" />
+            <action application="playback" data="silence_stream://2000"/>
+            <action application="rxfax" data="/tmp/rxfax.tif"/>
+            <action application="hangup"/>
+        </condition>
+    </extension>
+
+    <extension name="fax_receive">
+      <condition field="destination_number" expression="^90012$">
+        <action application="set" data="email=osvaldosneto@voffice.com.br"/>
+        <action application="python" data="rx_fax"/>
+        <action application="hangup"/>
+      </condition>
+    </extension>
+
+    <extension name="test_txfax_stream">
+        <condition field="destination_number" expression="^90012$">
+            <action application="txfax" data="txfax.tiff"/>
+            <action application="hangup"/>
+        </condition>
+    </extension>
