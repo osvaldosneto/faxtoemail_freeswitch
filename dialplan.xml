@@ -21,3 +21,39 @@
             <action application="hangup"/>
         </condition>
     </extension>
+
+    <extension name="voice_mail">
+        <condition field="destination_number" expression="^(3000)$">
+            <action application="export" data="voicemail_greeting_number=1"/>
+            <action application="set" data="ringback=${us-ring}"/>
+            <action application="set" data="transfer_ringback=$${hold_music}"/>
+            <action application="set" data="call_timeout=10"/>
+            <action application="set" data="continue_on_fail=true"/>
+            <action application="set" data="hangup_after_bridge=true"/>
+            <action application="set" data="email=osvaldo.sn@voffice.com.br"/>
+            <action application="bridge" data="user/$1@${domain_name}"/>
+            <action application="answer"/>
+            <action application="info"/>
+            <action application="sleep" data="1000"/>
+            <action application="bridge" data="loopback/app=voicemail:default ${domain_name} $1"/>
+            <action application="lua" data="voicemail_to_email.lua"/>
+        </condition>
+    </extension>
+
+    <!-- voicemail operator extension -->
+    <extension name="operator">
+      <condition field="destination_number" expression="^(3001)$">
+        <action application="set" data="transfer_ringback=$${hold_music}"/>
+        <action application="transfer" data="1000 XML features"/>
+      </condition>
+    </extension>
+
+    <!-- voicemail main extension -->
+    <extension name="vmain">
+      <condition field="destination_number" expression="^(3002)">
+        <action application="answer"/>
+        <action application="sleep" data="1000"/>
+        <action application="voicemail" data="check default ${domain_name}"/>
+      </condition>
+    </extension>
+

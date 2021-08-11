@@ -1,7 +1,8 @@
 -- -------------------------------------------------
 -- -- Autor: Osvaldo da Silva Neto
--- -- Data: 01/08/2021
+-- -- Data: 06/08/2021
 -- -- -------------------------------------------------
+
 
 local os = require "os"
 local smtp = require "socket.smtp"
@@ -10,40 +11,20 @@ local ssl = require 'ssl'
 local https = require 'ssl.https'
 local ltn12 = require 'ltn12'
 
-
---parâmetros a configurar, depende de cada usuário
-incomingfaxes = "/tmp/"
-uuid = session:getVariable("uuid")
-email = session:getVariable("email")
-caller = session:getVariable("caller_id_number")
-file = ''
-tiff2pdfcmd = '/usr/bin/tiff2pdf'
+--conta do emil
 email_from = "vofficeteste@gmail.com"
-email_to = session:getVariable("email")
 user = "vofficeteste"
 password = "senha123#"
 
-
---Função responsável pelo recebimento do fax
-function receiveFax()
-    freeswitch.consoleLog("notice", "Receiving fax from "..caller.."\n")
-    session:execute("playback", "silence_stream://2000")
-    session:execute("rxfax", incomingfaxes.."rxfax-"..uuid..".tiff")
-    freeswitch.consoleLog("notice", "Full receipt fax from "..caller.."\n")
-end
-
-
---Função responsável pela converssão do arquivo .tiff para pdf
-function convertTiff2Pdf()
-    freeswitch.consoleLog("notice", "Convert file .tiff to pdf\n")
-    freeswitch.consoleLog("notice", "rxfax-"..uuid..".tiff")
-    erro = os.execute(tiff2pdfcmd.." "..incomingfaxes.."rxfax-"..uuid..".tiff -o "..incomingfaxes.."rxfax-"..uuid..".pdf")
-    if erro > 0 then
-        freeswitch.consoleLog("notice", "Erro "..erro.."\n")
-    else
-        freeswitch.consoleLog("notice", "Arquivo convertido com sucesso.\n")
-    end
-end
+--variáveis capturadas e editadas
+domain_name = session:getVariable("domain_name")
+destination_number = session:getVariable("destination_number")
+uuid = session:getVariable("uuid")
+email_to = session:getVariable("email")
+caller_id_number = session:getVariable("caller_id_number")
+path_record = "/usr/local/freeswitch/storage/voicemail/default/"..domain_name.."/"..destination_number
+comando_mv = "mv "..path_record.."/msg_* tmp/msg-"..uuid..".wav"
+assunto = "Mensagem de Voz Originada de "..caller_id_number
 
 
 --Função responsável pela criação do socket
@@ -75,13 +56,13 @@ function sendMessage(subject)
             from = "<"..email_from..">",
             to = 'email_to <'..email_to..'>',
             ["content-type"] = 'text/html',
-            ["content-disposition"] = 'attachment; filename="'..incomingfaxes..'rxfax-'..uuid..'.pdf"',
-            ["content-description"] = '"'..incomingfaxes..'rxfax-'..uuid..'.pdf"',
+            ["content-disposition"] = 'attachment; filename="/tmp/msg-'..uuid..'.wav"',
+            ["content-description"] = '"msg-'..uuid..'.wav"',
             ["content-transfer-encoding"] = "BASE64",
             subject = subject
         },
         body = ltn12.source.chain(
-        ltn12.source.file(io.open(incomingfaxes.."rxfax-"..uuid..".pdf", "rb")),
+        ltn12.source.file(io.open('/tmp/msg-'..uuid..'.wav', "rb")),
         ltn12.filter.chain(
           mime.encode("base64"),
           mime.wrap()
@@ -106,15 +87,13 @@ function sendMessage(subject)
 end
 
 
-freeswitch.consoleLog("notice", "Script faxToEmail.lua starting\n")
-freeswitch.consoleLog("notice", "Receiving fax from "..caller.."\n")
-freeswitch.consoleLog("notice", "UUID "..uuid.."\n")
-freeswitch.consoleLog("notice", "email "..email.."\n")
+--movendo arquivo para diretório /tmp
+erro = os.execute(comando_mv)
 
-if session:ready() then
-    session:answer()
+if erro > 0 then
+    freeswitch.consoleLog("notice", "Erro ao mover o arquivo : erro "..erro.."\n")
+else
+    freeswitch.consoleLog("notice", "Arquivo movido para o diretório /tmp.\n")
 end
 
-receiveFax()
-convertTiff2Pdf()
-sendMessage(subject, body)sendMessage("Recebimento de Fax")
+sendMessage(assunto)
